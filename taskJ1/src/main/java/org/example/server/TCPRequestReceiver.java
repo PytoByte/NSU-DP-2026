@@ -1,7 +1,5 @@
 package org.example.server;
 
-import org.example.protocol.KeysRequest;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -62,29 +60,28 @@ public class TCPRequestReceiver implements Runnable, AutoCloseable {
                 return;
             }
 
-            int filled = buf.position();
-            int zero = -1;
-            for (int i = 0; i < filled; i++) {
+            int zeroPos = -1;
+            for (int i = 0; i < buf.position(); i++) {
                 if (buf.get(i) == NAME_TERMINATOR) {
-                    zero = i;
+                    zeroPos = i;
                     break;
                 }
             }
 
-            if (zero < 0) {
-                if (filled == buf.capacity()) {
+            if (zeroPos < 0) {
+                if (buf.position() == buf.capacity()) {
                     client.close();
                 }
                 return;
             }
 
-            byte[] nameBytes = new byte[zero];
+            byte[] nameBytes = new byte[zeroPos];
             buf.get(0, nameBytes);
             String name = new String(nameBytes, StandardCharsets.US_ASCII);
             
             key.interestOps(0);
 
-            requestQueue.put(new Request(new KeysRequest(name), client));
+            requestQueue.put(new Request(name, client));
 
         } catch (IOException e) {
             try {
