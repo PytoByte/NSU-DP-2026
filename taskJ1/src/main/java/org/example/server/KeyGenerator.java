@@ -1,14 +1,10 @@
 package org.example.server;
 
 import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.BasicConstraints;
-import org.bouncycastle.asn1.x509.Extension;
-import org.bouncycastle.asn1.x509.KeyUsage;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
@@ -33,8 +29,7 @@ public class KeyGenerator implements Runnable, AutoCloseable {
     private static final String SIGN_ALGO = "SHA256withRSA";
     private static final long CERT_DAYS = 365;
 
-    private final BlockingQueue<Request> requestQueue;
-    private final BlockingQueue<Response> responseQueue;
+    private final BlockingQueue<KeyGeneratorRequest> requestQueue;
     private final ConcurrentHashMap<String, CompletableFuture<KeyMaterial>> cache;
     private final PrivateKey signingKey;
     private final X500Name issuerName;
@@ -49,14 +44,12 @@ public class KeyGenerator implements Runnable, AutoCloseable {
     }
 
     public KeyGenerator(
-            BlockingQueue<Request> requestQueue,
-            BlockingQueue<Response> responseQueue,
+            BlockingQueue<KeyGeneratorRequest> requestQueue,
             ConcurrentHashMap<String, CompletableFuture<KeyMaterial>> cache,
             PrivateKey signingKey,
             String issuerDn
     ) {
         this.requestQueue = requestQueue;
-        this.responseQueue = responseQueue;
         this.cache = cache;
         this.signingKey = signingKey;
         this.issuerName = new X500Name(issuerDn);
@@ -65,7 +58,7 @@ public class KeyGenerator implements Runnable, AutoCloseable {
     @Override
     public void run() {
         while (running && !Thread.currentThread().isInterrupted()) {
-            Request req = takeRequest();
+            KeyGeneratorRequest req = takeRequest();
             if (req == null) {
                 return;
             }
@@ -73,7 +66,7 @@ public class KeyGenerator implements Runnable, AutoCloseable {
         }
     }
 
-    private Request takeRequest() {
+    private KeyGeneratorRequest takeRequest() {
         try {
             return requestQueue.take();
         } catch (InterruptedException e) {
@@ -82,9 +75,15 @@ public class KeyGenerator implements Runnable, AutoCloseable {
         }
     }
 
-    private void handleRequest(Request req) {
+    private void handleRequest(KeyGeneratorRequest req) {
         CompletableFuture<KeyMaterial> future = getOrStartGeneration(req.keysRequest());
-        future.whenComplete((km, err) -> enqueueResponse(req, km, err));
+        future.whenComplete((km, err) -> {
+            if (err != null) {
+                req.callback().onFailure(err);
+            } else {
+                req.callback().onSuccess(km);
+            }
+        });
     }
 
     /**
@@ -126,18 +125,6 @@ public class KeyGenerator implements Runnable, AutoCloseable {
         return kpg.generateKeyPair();
     }
 
-    private void enqueueResponse(Request req, KeyMaterial km, Throwable err) {
-        Response response = (err == null)
-                ? Response.success(req.keysRequest(), km.keyPair(), km.certificate(), req.socketChannel())
-                : Response.failure(req.keysRequest(), req.socketChannel(), err);
-
-        try {
-            responseQueue.put(response);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
-
     private X509Certificate buildCertificate(String subjectCn, KeyPair subjectKp) throws Exception {
         Instant now = Instant.now();
         Date validBegin = Date.from(now.minus(1, ChronoUnit.MINUTES));
@@ -152,8 +139,6 @@ public class KeyGenerator implements Runnable, AutoCloseable {
                 SubjectPublicKeyInfo.getInstance(subjectKp.getPublic().getEncoded())
         );
 
-        addStandardExtensions(builder, subjectKp);
-
         ContentSigner signer = new JcaContentSignerBuilder(SIGN_ALGO)
                 .setProvider(BouncyCastleProvider.PROVIDER_NAME)
                 .build(signingKey);
@@ -163,27 +148,6 @@ public class KeyGenerator implements Runnable, AutoCloseable {
         return new JcaX509CertificateConverter()
                 .setProvider(BouncyCastleProvider.PROVIDER_NAME)
                 .getCertificate(holder);
-    }
-
-    private void addStandardExtensions(
-            X509v3CertificateBuilder builder,
-            KeyPair subjectKp
-    ) throws Exception {
-        JcaX509ExtensionUtils extUtils = new JcaX509ExtensionUtils();
-
-        builder.addExtension(
-                Extension.basicConstraints,
-                true,
-                new BasicConstraints(false)
-        ).addExtension(
-                Extension.keyUsage,
-                true,
-                new KeyUsage(KeyUsage.digitalSignature | KeyUsage.keyEncipherment)
-        ).addExtension(
-                Extension.subjectKeyIdentifier,
-                false,
-                extUtils.createSubjectKeyIdentifier(subjectKp.getPublic())
-        );
     }
 
     public void shutdown() {
