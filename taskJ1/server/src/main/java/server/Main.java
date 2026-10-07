@@ -2,64 +2,46 @@ package server;
 
 import java.nio.file.Path;
 import java.security.PrivateKey;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class Main {
-
     public static void main(String[] args) throws Exception {
         if (args.length < 3) {
-            System.err.println("Usage: java Main <port> <workers> <issuerDN> " +
-                    "[signingKeyPath] [signingKeyPassword]");
+            System.err.println("Usage: <port> <workers> <issuerDN> [keyPath] [keyPassword]");
             System.exit(1);
         }
 
         int port = Integer.parseInt(args[0]);
         int workers = Integer.parseInt(args[1]);
         String issuerDn = args[2];
-        Path signingKeyPath = Path.of(args.length > 3 ? args[3] : "server.key");
-        char[] signingKeyPassword = args.length > 4 ? args[4].toCharArray() : null;
+        Path keyPath = Path.of(args.length > 3 ? args[3] : "server.key");
+        char[] keyPassword = args.length > 4 ? args[4].toCharArray() : null;
 
-        PrivateKey signingKey = SigningKeyLoader.load(signingKeyPath, signingKeyPassword);
+        PrivateKey signingKey = SigningKeyLoader.load(keyPath, keyPassword);
+        var requestQueue = new LinkedBlockingQueue<KeyGeneratorRequest>();
+        var cache = new ConcurrentHashMap<String, CompletableFuture<KeyMaterial>>();
 
-        BlockingQueue<KeyGeneratorRequest> requestQueue = new LinkedBlockingQueue<>();
-        ConcurrentHashMap<String, CompletableFuture<KeyMaterial>> cache = new ConcurrentHashMap<>();
-
-        TCPServer server = new TCPServer(port, requestQueue);
-        Thread serverThread = new Thread(server, "tcp-server");
-        serverThread.setDaemon(true);
+        var server = new TCPServer(port, requestQueue);
+        var serverThread = new Thread(server, "tcp-server");
         serverThread.start();
 
-        List<KeyGenerator> generators = new ArrayList<>(workers);
-        List<Thread> generatorThreads = new ArrayList<>(workers);
-
+        var generators = Executors.newFixedThreadPool(workers);
         for (int i = 0; i < workers; i++) {
-            KeyGenerator generator = new KeyGenerator(
-                    requestQueue, cache, signingKey, issuerDn);
-            Thread t = new Thread(generator, "key-gen-" + i);
-            t.setDaemon(true);
-            t.start();
-            generators.add(generator);
-            generatorThreads.add(t);
+            generators.submit(new KeyGenerator(requestQueue, cache, signingKey, issuerDn));
         }
 
         System.out.printf("Server started: port=%d, workers=%d, issuer=%s%n",
                 port, workers, issuerDn);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("shutting down...");
             try {
                 server.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            generators.forEach(KeyGenerator::shutdown);
-            generatorThreads.forEach(Thread::interrupt);
-        }, "shutdown-hook"));
+            } catch (Exception ignored) {}
+            generators.shutdownNow();
+        }));
 
         serverThread.join();
     }
