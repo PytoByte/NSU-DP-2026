@@ -1,4 +1,4 @@
-package org.example.server;
+package server;
 
 public record KeyGeneratorRequest(
         String keysRequest,

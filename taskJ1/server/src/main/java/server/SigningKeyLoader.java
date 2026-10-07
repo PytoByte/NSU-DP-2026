@@ -1,4 +1,4 @@
-package org.example.server;
+package server;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;

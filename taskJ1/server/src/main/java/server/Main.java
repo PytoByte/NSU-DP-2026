@@ -1,4 +1,4 @@
-package org.example.server;
+package server;
 
 import java.nio.file.Path;
 import java.security.PrivateKey;
@@ -30,9 +30,9 @@ public class Main {
         ConcurrentHashMap<String, CompletableFuture<KeyMaterial>> cache = new ConcurrentHashMap<>();
 
         TCPServer server = new TCPServer(port, requestQueue);
-        Thread receiverThread = new Thread(server, "tcp-server");
-        receiverThread.setDaemon(true);
-        receiverThread.start();
+        Thread serverThread = new Thread(server, "tcp-server");
+        serverThread.setDaemon(true);
+        serverThread.start();
 
         List<KeyGenerator> generators = new ArrayList<>(workers);
         List<Thread> generatorThreads = new ArrayList<>(workers);
@@ -60,5 +60,7 @@ public class Main {
             generators.forEach(KeyGenerator::shutdown);
             generatorThreads.forEach(Thread::interrupt);
         }, "shutdown-hook"));
+
+        serverThread.join();
     }
 }

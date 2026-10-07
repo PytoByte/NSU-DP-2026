@@ -1,4 +1,4 @@
-package org.example.server;
+package server;
 
 import java.io.EOFException;
 import java.io.IOException;
