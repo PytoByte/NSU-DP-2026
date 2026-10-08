@@ -3,6 +3,7 @@ package server;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -19,12 +20,19 @@ public class TCPServer implements Runnable, AutoCloseable {
     public TCPServer(int port, BlockingQueue<KeyGeneratorRequest> requestQueue) throws IOException {
         this.requestQueue = requestQueue;
 
-        this.serverChannel = ServerSocketChannel.open();
-        this.serverChannel.bind(new InetSocketAddress(port));
-        this.serverChannel.configureBlocking(false);
-
-        this.selectorLoop = new SelectorLoop(this::onAccept, this::onRead, this::onWritable);
-        this.selectorLoop.register(serverChannel, SelectionKey.OP_ACCEPT);
+        ServerSocketChannel ch = ServerSocketChannel.open();
+        try {
+            ch.bind(new InetSocketAddress(port));
+            ch.configureBlocking(false);
+            this.selectorLoop = new SelectorLoop(this::onAccept, this::onRead, this::onWritable);
+            this.selectorLoop.register(ch, SelectionKey.OP_ACCEPT);
+            this.serverChannel = ch;
+        } catch (IOException | RuntimeException e) {
+            try {
+                ch.close();
+            } catch (IOException ignored) {}
+            throw e;
+        }
     }
 
     private void onAccept(SelectionKey key) {
@@ -40,7 +48,7 @@ public class TCPServer implements Runnable, AutoCloseable {
                 );
             }
         } catch (IOException e) {
-            // логгер
+            e.printStackTrace();
         }
     }
 
@@ -55,14 +63,15 @@ public class TCPServer implements Runnable, AutoCloseable {
             }
 
             key.interestOps(0);
-            requestQueue.put(new KeyGeneratorRequest(name, new KeyGeneratorResponseCallback(
-                    key, selectorLoop, () -> closeKey(key)
-            )));
 
+            requestQueue.put(new KeyGeneratorRequest(
+                    name,
+                    new KeyGeneratorResponseCallback(key, selectorLoop, () -> closeKey(key))
+            ));
+
+        } catch (InterruptedException ignored) {
         } catch (IOException e) {
-            closeKey(key);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            e.printStackTrace();
             closeKey(key);
         }
     }
@@ -75,7 +84,10 @@ public class TCPServer implements Runnable, AutoCloseable {
             if (SocketIO.tryWrite(client, buffer)) {
                 closeKey(key);
             }
+        } catch (CancelledKeyException e) {
+            closeKey(key);
         } catch (IOException e) {
+            e.printStackTrace();
             closeKey(key);
         }
     }

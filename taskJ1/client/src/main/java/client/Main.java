@@ -9,11 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class Main {
-
     public static void main(String[] args) throws Exception {
         if (args.length < 4) {
-            System.err.println("Usage: KeyClient <host> <port> <name> <outputBase> " +
-                    "[--delay seconds] [--abort]");
+            System.err.println("Usage: <host> <port> <name> <outputBase> [--delay seconds] [--abort]");
             System.exit(1);
         }
 
@@ -42,7 +40,7 @@ public class Main {
 
             if (abort) {
                 System.out.println("Aborting without reading response (client crash simulation).");
-                return;   // try-with-resources закроет канал
+                return;
             }
 
             if (delaySeconds > 0) {

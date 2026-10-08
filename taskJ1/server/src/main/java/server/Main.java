@@ -1,5 +1,7 @@
 package server;
 
+import org.bouncycastle.asn1.x500.X500Name;
+
 import java.nio.file.Path;
 import java.security.PrivateKey;
 import java.util.concurrent.CompletableFuture;
@@ -16,7 +18,7 @@ public class Main {
 
         int port = Integer.parseInt(args[0]);
         int workers = Integer.parseInt(args[1]);
-        String issuerDn = args[2];
+        X500Name issuer = new X500Name(args[2]);
         Path keyPath = Path.of(args.length > 3 ? args[3] : "server.key");
         char[] keyPassword = args.length > 4 ? args[4].toCharArray() : null;
 
@@ -30,11 +32,11 @@ public class Main {
 
         var generators = Executors.newFixedThreadPool(workers);
         for (int i = 0; i < workers; i++) {
-            generators.submit(new KeyGenerator(requestQueue, cache, signingKey, issuerDn));
+            generators.submit(new KeyGenerator(requestQueue, cache, signingKey, issuer));
         }
 
         System.out.printf("Server started: port=%d, workers=%d, issuer=%s%n",
-                port, workers, issuerDn);
+                port, workers, issuer);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {

@@ -1,6 +1,8 @@
 package server;
 
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x500.X500NameBuilder;
+import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
@@ -23,8 +25,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class KeyGenerator implements Runnable, AutoCloseable {
-
+public class KeyGenerator implements Runnable {
     private static final int RSA_KEY_BITS = 8192;
     private static final String SIGN_ALGO = "SHA256withRSA";
     private static final long CERT_DAYS = 365;
@@ -34,8 +35,6 @@ public class KeyGenerator implements Runnable, AutoCloseable {
     private final PrivateKey signingKey;
     private final X500Name issuerName;
     private final SecureRandom random = new SecureRandom();
-
-    private volatile boolean running = true;
 
     static {
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
@@ -47,31 +46,22 @@ public class KeyGenerator implements Runnable, AutoCloseable {
             BlockingQueue<KeyGeneratorRequest> requestQueue,
             ConcurrentHashMap<String, CompletableFuture<KeyMaterial>> cache,
             PrivateKey signingKey,
-            String issuerDn
+            X500Name issuerName
     ) {
         this.requestQueue = requestQueue;
         this.cache = cache;
         this.signingKey = signingKey;
-        this.issuerName = new X500Name(issuerDn);
+        this.issuerName = issuerName;
     }
 
     @Override
     public void run() {
-        while (running && !Thread.currentThread().isInterrupted()) {
-            KeyGeneratorRequest req = takeRequest();
-            if (req == null) {
-                return;
-            }
-            handleRequest(req);
-        }
-    }
-
-    private KeyGeneratorRequest takeRequest() {
         try {
-            return requestQueue.take();
+            while (!Thread.currentThread().isInterrupted()) {
+                handleRequest(requestQueue.take());
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return null;
         }
     }
 
@@ -107,7 +97,7 @@ public class KeyGenerator implements Runnable, AutoCloseable {
     private void generateInto(String name, CompletableFuture<KeyMaterial> future) {
         try {
             future.complete(generateKeyMaterial(name));
-        } catch (Exception e) {
+        } catch (Throwable e) {
             cache.remove(name, future);
             future.completeExceptionally(e);
         }
@@ -135,7 +125,9 @@ public class KeyGenerator implements Runnable, AutoCloseable {
                 new BigInteger(64, random).abs(),
                 validBegin,
                 validEnd,
-                new X500Name("CN=" + subjectCn),
+                new X500NameBuilder(BCStyle.INSTANCE)
+                        .addRDN(BCStyle.CN, subjectCn)
+                        .build(),
                 SubjectPublicKeyInfo.getInstance(subjectKp.getPublic().getEncoded())
         );
 
@@ -148,14 +140,5 @@ public class KeyGenerator implements Runnable, AutoCloseable {
         return new JcaX509CertificateConverter()
                 .setProvider(BouncyCastleProvider.PROVIDER_NAME)
                 .getCertificate(holder);
-    }
-
-    public void shutdown() {
-        running = false;
-    }
-
-    @Override
-    public void close() {
-        shutdown();
     }
 }
