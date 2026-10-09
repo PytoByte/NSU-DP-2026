@@ -76,11 +76,6 @@ public class KeyGenerator implements Runnable {
         });
     }
 
-    /**
-     * Если имя встречается впервые — запускает генерацию прямо в этом потоке
-     * и возвращает future, который завершится по её окончании.
-     * Если генерация уже идёт (или завершена) — возвращает существующий future.
-     */
     private CompletableFuture<KeyMaterial> getOrStartGeneration(String name) {
         CompletableFuture<KeyMaterial> fresh = new CompletableFuture<>();
         CompletableFuture<KeyMaterial> existing = cache.putIfAbsent(name, fresh);
@@ -93,7 +88,6 @@ public class KeyGenerator implements Runnable {
         return fresh;
     }
 
-    /** Синхронная генерация. Гарантирует, что future будет завершён (успешно или с ошибкой). */
     private void generateInto(String name, CompletableFuture<KeyMaterial> future) {
         try {
             future.complete(generateKeyMaterial(name));

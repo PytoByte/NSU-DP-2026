@@ -8,12 +8,6 @@ public record KeyMaterial(
         KeyPair keyPair,
         X509Certificate certificate
 ) {
-
-    /**
-     * Сериализует материал в буфер для отправки по сети:
-     * {@code [4 байта len][private key DER][4 байта len][certificate DER]}.
-     * Позиция буфера — 0, limit — конец данных.
-     */
     public ByteBuffer encode() throws Exception {
         byte[] keyBytes  = keyPair.getPrivate().getEncoded();
         byte[] certBytes = certificate.getEncoded();

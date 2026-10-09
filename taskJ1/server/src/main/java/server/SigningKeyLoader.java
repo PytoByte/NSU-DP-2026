@@ -14,12 +14,6 @@ import java.nio.file.Path;
 import java.security.PrivateKey;
 import java.security.Security;
 
-/**
- * Читает приватный ключ из PEM-файла.
- * Поддерживает оба варианта PKCS#8:
- *   - незашифрованный: BEGIN PRIVATE KEY (пароль не нужен)
- *   - зашифрованный: BEGIN ENCRYPTED PRIVATE KEY (пароль обязателен)
- */
 public final class SigningKeyLoader {
 
     static {
@@ -28,12 +22,6 @@ public final class SigningKeyLoader {
         }
     }
 
-    /**
-     * @param path     путь к PEM-файлу
-     * @param password пароль для расшифровки; может быть {@code null} для незашифрованного PEM
-     * @return приватный ключ
-     * @throws IOException если файл не читается или PEM не распознан
-     */
     public static PrivateKey load(Path path, char[] password) throws Exception {
         try (Reader reader = Files.newBufferedReader(path);
              PEMParser parser = new PEMParser(reader)) {

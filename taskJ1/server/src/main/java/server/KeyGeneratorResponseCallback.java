@@ -2,10 +2,6 @@ package server;
 
 import java.nio.channels.SelectionKey;
 
-/**
- * Реакция на результат генерации ключа. Вызывается из потока-генератора.
- * Про закрытие ничего не знает — получает готовое действие снаружи.
- */
 public final class KeyGeneratorResponseCallback {
 
     private final SelectionKey key;
@@ -33,6 +29,7 @@ public final class KeyGeneratorResponseCallback {
     }
 
     public void onFailure(Throwable error) {
+        error.printStackTrace();
         closeAction.run();
     }
 }
