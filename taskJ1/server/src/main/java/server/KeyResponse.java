@@ -1,15 +1,15 @@
 package server;
 
 import java.nio.ByteBuffer;
-import java.security.KeyPair;
+import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 
 public record KeyResponse(
-        KeyPair keyPair,
+        PrivateKey privateKey,
         X509Certificate certificate
 ) {
     public ByteBuffer encode() throws Exception {
-        byte[] keyBytes  = keyPair.getPrivate().getEncoded();
+        byte[] keyBytes  = privateKey.getEncoded();
         byte[] certBytes = certificate.getEncoded();
 
         ByteBuffer buf = ByteBuffer.allocate(Integer.BYTES + keyBytes.length

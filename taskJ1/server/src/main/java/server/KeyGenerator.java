@@ -103,7 +103,7 @@ public class KeyGenerator implements Runnable {
     private KeyResponse generateKeyResponse(String name) throws Exception {
         KeyPair keyPair = generateRsaKeyPair();
         X509Certificate cert = buildCertificate(name, keyPair);
-        return new KeyResponse(keyPair, cert);
+        return new KeyResponse(keyPair.getPrivate(), cert);
     }
 
     private KeyPair generateRsaKeyPair() throws Exception {
