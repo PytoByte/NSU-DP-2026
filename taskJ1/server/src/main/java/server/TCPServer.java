@@ -46,6 +46,7 @@ public class TCPServer implements Runnable, AutoCloseable {
                         SelectionKey.OP_READ,
                         ByteBuffer.allocate(MAX_NAME_BYTES)
                 );
+                System.out.println("New client " + client.getRemoteAddress().toString());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -57,10 +58,12 @@ public class TCPServer implements Runnable, AutoCloseable {
         ByteBuffer buffer = (ByteBuffer) key.attachment();
 
         try {
+            System.out.println("Reading name from " + client.getRemoteAddress().toString());
             String name = SocketIO.readName(client, buffer);
             if (name == null) {
                 return;
             }
+            System.out.println("Name for " + client.getRemoteAddress().toString() + " is " + name);
 
             key.interestOps(0);
 
@@ -81,6 +84,7 @@ public class TCPServer implements Runnable, AutoCloseable {
         ByteBuffer buffer = (ByteBuffer) key.attachment();
 
         try {
+            System.out.println("Answering to " + client.getRemoteAddress().toString());
             if (SocketIO.tryWrite(client, buffer)) {
                 closeKey(key);
             }
@@ -94,6 +98,7 @@ public class TCPServer implements Runnable, AutoCloseable {
 
     private void closeKey(SelectionKey key) {
         try {
+            System.out.println("Closing connection");
             key.channel().close();
         } catch (IOException ignored) {
         }

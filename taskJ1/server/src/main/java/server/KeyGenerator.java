@@ -66,11 +66,14 @@ public class KeyGenerator implements Runnable {
     }
 
     private void handleRequest(KeyGeneratorRequest req) {
+        System.out.println("Generation for " + req.keysRequest() + " started");
         CompletableFuture<KeyMaterial> future = getOrStartGeneration(req.keysRequest());
         future.whenComplete((km, err) -> {
             if (err != null) {
+                System.out.println("Generation for " + req.keysRequest() + " failed");
                 req.callback().onFailure(err);
             } else {
+                System.out.println("Generation for " + req.keysRequest() + " finished");
                 req.callback().onSuccess(km);
             }
         });

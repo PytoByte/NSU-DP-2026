@@ -5,7 +5,7 @@ openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -out server.key
 
 Запуск сервера
 ```powershell
-./gradlew :server:run --args="5555 8 CN=KeyServer server.key
+./gradlew :server:run --args="5555 8 CN=KeyServer server.key"
 ```
 
 Запуск клиента
