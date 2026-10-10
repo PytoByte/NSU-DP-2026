@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 
-public record KeyMaterial(
+public record KeyResponse(
         KeyPair keyPair,
         X509Certificate certificate
 ) {

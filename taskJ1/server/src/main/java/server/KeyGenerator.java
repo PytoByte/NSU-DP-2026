@@ -30,8 +30,8 @@ public class KeyGenerator implements Runnable {
     private static final String SIGN_ALGO = "SHA256withRSA";
     private static final long CERT_DAYS = 365;
 
-    private final BlockingQueue<KeyGeneratorRequest> requestQueue;
-    private final ConcurrentHashMap<String, CompletableFuture<KeyMaterial>> cache;
+    private final BlockingQueue<KeyRequest> requestQueue;
+    private final ConcurrentHashMap<String, CompletableFuture<KeyResponse>> cache;
     private final PrivateKey signingKey;
     private final X500Name issuerName;
     private final SecureRandom random = new SecureRandom();
@@ -43,8 +43,8 @@ public class KeyGenerator implements Runnable {
     }
 
     public KeyGenerator(
-            BlockingQueue<KeyGeneratorRequest> requestQueue,
-            ConcurrentHashMap<String, CompletableFuture<KeyMaterial>> cache,
+            BlockingQueue<KeyRequest> requestQueue,
+            ConcurrentHashMap<String, CompletableFuture<KeyResponse>> cache,
             PrivateKey signingKey,
             X500Name issuerName
     ) {
@@ -65,9 +65,9 @@ public class KeyGenerator implements Runnable {
         }
     }
 
-    private void handleRequest(KeyGeneratorRequest req) {
+    private void handleRequest(KeyRequest req) {
         System.out.println("Generation for " + req.keysRequest() + " started");
-        CompletableFuture<KeyMaterial> future = getOrStartGeneration(req.keysRequest());
+        CompletableFuture<KeyResponse> future = getOrStartGeneration(req.keysRequest());
         future.whenComplete((km, err) -> {
             if (err != null) {
                 System.out.println("Generation for " + req.keysRequest() + " failed");
@@ -79,9 +79,9 @@ public class KeyGenerator implements Runnable {
         });
     }
 
-    private CompletableFuture<KeyMaterial> getOrStartGeneration(String name) {
-        CompletableFuture<KeyMaterial> fresh = new CompletableFuture<>();
-        CompletableFuture<KeyMaterial> existing = cache.putIfAbsent(name, fresh);
+    private CompletableFuture<KeyResponse> getOrStartGeneration(String name) {
+        CompletableFuture<KeyResponse> fresh = new CompletableFuture<>();
+        CompletableFuture<KeyResponse> existing = cache.putIfAbsent(name, fresh);
 
         if (existing != null) {
             return existing;
@@ -91,19 +91,19 @@ public class KeyGenerator implements Runnable {
         return fresh;
     }
 
-    private void generateInto(String name, CompletableFuture<KeyMaterial> future) {
+    private void generateInto(String name, CompletableFuture<KeyResponse> future) {
         try {
-            future.complete(generateKeyMaterial(name));
+            future.complete(generateKeyResponse(name));
         } catch (Throwable e) {
             cache.remove(name, future);
             future.completeExceptionally(e);
         }
     }
 
-    private KeyMaterial generateKeyMaterial(String name) throws Exception {
+    private KeyResponse generateKeyResponse(String name) throws Exception {
         KeyPair keyPair = generateRsaKeyPair();
         X509Certificate cert = buildCertificate(name, keyPair);
-        return new KeyMaterial(keyPair, cert);
+        return new KeyResponse(keyPair, cert);
     }
 
     private KeyPair generateRsaKeyPair() throws Exception {

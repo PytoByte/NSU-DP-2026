@@ -15,9 +15,9 @@ public class TCPServer implements Runnable, AutoCloseable {
 
     private final SelectorLoop selectorLoop;
     private final ServerSocketChannel serverChannel;
-    private final BlockingQueue<KeyGeneratorRequest> requestQueue;
+    private final BlockingQueue<KeyRequest> requestQueue;
 
-    public TCPServer(int port, BlockingQueue<KeyGeneratorRequest> requestQueue) throws IOException {
+    public TCPServer(int port, BlockingQueue<KeyRequest> requestQueue) throws IOException {
         this.requestQueue = requestQueue;
 
         ServerSocketChannel ch = ServerSocketChannel.open();
@@ -67,9 +67,9 @@ public class TCPServer implements Runnable, AutoCloseable {
 
             key.interestOps(0);
 
-            requestQueue.put(new KeyGeneratorRequest(
+            requestQueue.put(new KeyRequest(
                     name,
-                    new KeyGeneratorResponseCallback(key, selectorLoop, () -> closeKey(key))
+                    new KeyResponseCallback(key, selectorLoop, () -> closeKey(key))
             ));
 
         } catch (InterruptedException ignored) {

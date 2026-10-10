@@ -23,8 +23,8 @@ public class Main {
         char[] keyPassword = args.length > 4 ? args[4].toCharArray() : null;
 
         PrivateKey signingKey = SigningKeyLoader.load(keyPath, keyPassword);
-        var requestQueue = new LinkedBlockingQueue<KeyGeneratorRequest>();
-        var cache = new ConcurrentHashMap<String, CompletableFuture<KeyMaterial>>();
+        var requestQueue = new LinkedBlockingQueue<KeyRequest>();
+        var cache = new ConcurrentHashMap<String, CompletableFuture<KeyResponse>>();
 
         var server = new TCPServer(port, requestQueue);
         var serverThread = new Thread(server, "tcp-server");
