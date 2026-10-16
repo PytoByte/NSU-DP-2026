@@ -8,7 +8,7 @@ public enum ListType {
         return switch (name.toLowerCase()) {
             case "linked" -> LINKED;
             case "array" -> ARRAY;
-            default -> throw new IllegalArgumentException("Неизвестный тип списка: " + name);
+            default -> throw new IllegalArgumentException("Unknown list type: " + name);
         };
     }
 }

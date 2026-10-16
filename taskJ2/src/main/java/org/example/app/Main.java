@@ -79,7 +79,7 @@ public final class Main {
                 case "max-line", "maxLine" -> maxLine = Integer.parseInt(value);
                 case "benchmark" -> benchmark = Integer.parseInt(value);
                 case "duration" -> duration = Long.parseLong(value);
-                default -> throw new IllegalArgumentException("Неизвестный аргумент: " + arg);
+                default -> throw new IllegalArgumentException("Unknown argument: " + arg);
             }
         }
 

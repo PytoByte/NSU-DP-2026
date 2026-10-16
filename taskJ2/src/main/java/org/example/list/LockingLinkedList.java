@@ -38,7 +38,6 @@ public final class LockingLinkedList implements SyncStringList {
                 current = next;
             }
         } finally {
-            values.add(current.getValue());
             current.unlock();
         }
 

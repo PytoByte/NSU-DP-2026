@@ -33,7 +33,9 @@ public final class LinkedListBubbleSorter extends BubbleSorter {
         Node current = list.getHead();
 
         while (current.getNext() != null) {
-            sortFollowingPair(current);
+            if (sortFollowingPair(current)) {
+                changed = true;
+            }
             current = current.getNext();
             delay.sleepBetweenSteps();
         }
@@ -41,7 +43,7 @@ public final class LinkedListBubbleSorter extends BubbleSorter {
         return changed;
     }
 
-    public void sortFollowingPair(Node before) throws InterruptedException {
+    public boolean sortFollowingPair(Node before) throws InterruptedException {
         before.lock();
         try {
             Node a = before.getNext();
@@ -50,13 +52,17 @@ public final class LinkedListBubbleSorter extends BubbleSorter {
                 Node b = a.getNext();
                 b.lock();
                 try {
+                    counter.incrementAndGet();
+                    boolean swapped = false;
                     if (a.getValue().compareTo(b.getValue()) > 0) {
+                        Node after = b.getNext();
                         before.setNext(b);
                         b.setNext(a);
-                        a.setNext(b.getNext());
+                        a.setNext(after);
+                        swapped = true;
                     }
                     delay.sleepInsideStep();
-                    counter.incrementAndGet();
+                    return swapped;
                 } finally {
                     b.unlock();
                 }
@@ -64,7 +70,7 @@ public final class LinkedListBubbleSorter extends BubbleSorter {
                 a.unlock();
             }
         } catch (NullPointerException ignored) {
-
+            return false;
         } finally {
             before.unlock();
         }

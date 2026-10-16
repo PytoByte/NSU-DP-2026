@@ -46,9 +46,9 @@ public final class ArrayListBubbleSorter extends BubbleSorter {
             if (i < 0 || i + 1 >= list.size()) {
                 return false;
             }
+            counter.incrementAndGet();
             if (list.get(i).compareTo(list.get(i + 1)) > 0) {
                 list.swap(i, i + 1);
-                counter.incrementAndGet();
                 return true;
             }
             return false;

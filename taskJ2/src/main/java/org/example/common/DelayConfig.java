@@ -7,7 +7,7 @@ public record DelayConfig(
 
     public DelayConfig {
         if (betweenStepsMillis < 0 || insideStepMillis < 0) {
-            throw new IllegalArgumentException("Задержки не могут быть отрицательными");
+            throw new IllegalArgumentException("Delays must not be negative");
         }
     }
 
