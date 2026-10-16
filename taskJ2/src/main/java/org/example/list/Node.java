@@ -1,30 +1,41 @@
 package org.example.list;
 
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * Представляет узел двусвязного списка, хранящий строку и собственную блокировку,
- * что позволяет нитям синхронизироваться по отдельным узлам, а не по всему списку.
- *
- * <p>Содержимое ({@link #value}) неизменяемо — при перестановке меняются только
- * ссылки {@link #prev}/{@link #next}, но никогда не содержимое.
- *
- * <p>Ссылки {@code volatile}, чтобы чтение из другого потока не давало
- * «порванных» значений; изменяются они только под {@link #lock}.
- */
 final class Node {
+    private final Lock lock = new ReentrantLock();
+    private boolean head = false;
+    private final String value;
+    private volatile Node next;
 
-    final String value;
-    volatile Node prev;
-    volatile Node next;
-    final ReentrantLock lock = new ReentrantLock();
+    Node() {
+        head = true;
+        value = null;
+    }
 
-    /**
-     * Создаёт узел с заданным значением и пустыми ссылками.
-     *
-     * @param value значение узла
-     */
+
     Node(String value) {
         this.value = value;
+    }
+
+    public void lock() {
+        lock.lock();
+    }
+
+    public void unlock() {
+        lock.unlock();
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public Node getNext() {
+        return next;
+    }
+
+    public void setNext(Node next) {
+        this.next = next;
     }
 }
