@@ -10,7 +10,7 @@ public record AppConfig(
 ) {
 
     public static final int DEFAULT_THREADS = 3;
-    public static final long DEFAULT_BETWEEN_STEPS_MS = 0;
+    public static final long DEFAULT_BETWEEN_STEPS_MS = 1000;
     public static final long DEFAULT_INSIDE_STEP_MS = 0;
     public static final int DEFAULT_MAX_LINE_LENGTH = 80;
 
