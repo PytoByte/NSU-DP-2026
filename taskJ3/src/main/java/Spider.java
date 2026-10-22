@@ -1,3 +1,4 @@
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -11,44 +12,50 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Spider {
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
+    private static final int MAX_PARALLEL_REQUESTS = 100;
+    private static final int MAX_ATTEMPTS = 3;
+    private static final long RETRY_DELAY_MS = 200;
 
     private final HttpClient client;
-    private final String baseUrl;
+    private final URI baseUri;
+    private final Gson gson = new Gson();
     private final Set<String> visited = ConcurrentHashMap.newKeySet();
     private final List<String> messages = Collections.synchronizedList(new ArrayList<>());
+    private final Semaphore permits = new Semaphore(MAX_PARALLEL_REQUESTS);
     private final AtomicInteger pending = new AtomicInteger();
     private final Object idle = new Object();
 
     public Spider(HttpClient client, String baseUrl) {
         this.client = client;
-        this.baseUrl = baseUrl;
+        this.baseUri = URI.create(baseUrl);
     }
 
     public List<String> crawl(String root) {
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            submit(root, executor);
+            start(root, executor);
             awaitIdle();
         }
         return List.copyOf(messages);
     }
 
-    private void submit(String path, ExecutorService executor) {
+    private void start(String path, ExecutorService executor) {
         if (!visited.add(path)) {
             return;
         }
         pending.incrementAndGet();
-        executor.execute(() -> visit(path, executor));
+        executor.execute(() -> scan(path, executor));
     }
 
-    private void visit(String path, ExecutorService executor) {
+    private void scan(String path, ExecutorService executor) {
         try {
-            ServerResponse response = ResponseParser.parse(fetch(path));
+            ServerResponse response = gson.fromJson(fetchWithRetry(path), ServerResponse.class);
             messages.add(response.message());
-            response.successors().forEach(successor -> submit(successor, executor));
+            response.successors().forEach(child -> start(child, executor));
         } catch (Exception e) {
             System.err.println("Failed to fetch " + path + ": " + e.getMessage());
         } finally {
@@ -56,20 +63,36 @@ public class Spider {
         }
     }
 
-    private String fetch(String path) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(resolve(path)))
-                .timeout(REQUEST_TIMEOUT)
-                .GET()
-                .build();
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) {
-            throw new IOException("HTTP " + response.statusCode());
+    private String fetchWithRetry(String path) throws IOException, InterruptedException {
+        IOException lastFailure = null;
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                return fetch(path);
+            } catch (IOException e) {
+                lastFailure = e;
+                if (attempt < MAX_ATTEMPTS) {
+                    Thread.sleep(RETRY_DELAY_MS * attempt);
+                }
+            }
         }
-        return response.body();
+        throw lastFailure;
     }
 
-    private String resolve(String path) {
-        return path.startsWith("/") ? baseUrl + path : baseUrl + "/" + path;
+    private String fetch(String path) throws IOException, InterruptedException {
+        permits.acquire();
+        try {
+            HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(path))
+                    .timeout(REQUEST_TIMEOUT)
+                    .GET()
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new IOException("HTTP " + response.statusCode());
+            }
+            return response.body();
+        } finally {
+            permits.release();
+        }
     }
 
     private void awaitIdle() {
