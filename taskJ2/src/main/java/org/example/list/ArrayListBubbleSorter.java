@@ -32,7 +32,6 @@ public final class ArrayListBubbleSorter extends BubbleSorter {
         boolean changed = false;
         int n = list.size();
         for (int i = 0; i + 1 < n; i++) {
-            delay.sleepInsideStep();
             if (compareAndSwap(i)) {
                 changed = true;
             }
@@ -41,8 +40,9 @@ public final class ArrayListBubbleSorter extends BubbleSorter {
         return changed;
     }
 
-    boolean compareAndSwap(int i) {
+    boolean compareAndSwap(int i) throws InterruptedException {
         synchronized (list) {
+            delay.sleepInsideStep();
             if (i < 0 || i + 1 >= list.size()) {
                 return false;
             }

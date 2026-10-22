@@ -52,6 +52,7 @@ public final class LinkedListBubbleSorter extends BubbleSorter {
                 Node b = a.getNext();
                 b.lock();
                 try {
+                    delay.sleepInsideStep();
                     counter.incrementAndGet();
                     boolean swapped = false;
                     if (a.getValue().compareTo(b.getValue()) > 0) {
@@ -61,7 +62,6 @@ public final class LinkedListBubbleSorter extends BubbleSorter {
                         a.setNext(after);
                         swapped = true;
                     }
-                    delay.sleepInsideStep();
                     return swapped;
                 } finally {
                     b.unlock();
