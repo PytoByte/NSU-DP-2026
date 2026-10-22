@@ -42,15 +42,15 @@ public final class BenchmarkRunner {
     }
 
     public static Report run(AppConfig config) throws InterruptedException {
-        int elements = config.benchmarkElements() != null ? config.benchmarkElements() : 20;
+        int elements = config.benchmarkElements();
         Long duration = config.benchmarkDurationMillis();
         boolean untilSorted = duration == null;
+        DelayConfig delay = config.delay();
+
         long timeout = duration != null ? duration :
-                config.delay().insideStepMillis() * config.delay().betweenStepsMillis()
-                        * config.benchmarkElements();
+                delay.insideStepMillis() * delay.betweenStepsMillis() * elements;
 
         AtomicInteger counter = new AtomicInteger();
-        DelayConfig delay = config.delay();
         List<BubbleSorter> sorters = new ArrayList<>();
 
         if (config.listType() == ListType.LINKED) {
