@@ -45,7 +45,9 @@ public final class BenchmarkRunner {
         int elements = config.benchmarkElements() != null ? config.benchmarkElements() : 20;
         Long duration = config.benchmarkDurationMillis();
         boolean untilSorted = duration == null;
-        long timeout = duration != null ? duration : 30_000L;
+        long timeout = duration != null ? duration :
+                config.delay().insideStepMillis() * config.delay().betweenStepsMillis()
+                        * config.benchmarkElements();
 
         AtomicInteger counter = new AtomicInteger();
         DelayConfig delay = config.delay();
