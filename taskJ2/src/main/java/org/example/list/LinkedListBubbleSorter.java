@@ -32,11 +32,20 @@ public final class LinkedListBubbleSorter extends BubbleSorter {
         boolean changed = false;
         Node current = list.getHead();
 
-        while (current.getNext() != null) {
+        while (true) {
+            Node next = current.getNext();
+            if (next == null || next.getNext() == null) {
+                break;
+            }
+
             if (sortFollowingPair(current)) {
                 changed = true;
             }
+
             current = current.getNext();
+            if (current == null) {
+                break;
+            }
             delay.sleepBetweenSteps();
         }
 
@@ -47,30 +56,33 @@ public final class LinkedListBubbleSorter extends BubbleSorter {
         before.lock();
         try {
             Node a = before.getNext();
+            if (a == null) {
+                return false;
+            }
             a.lock();
             try {
                 Node b = a.getNext();
+                if (b == null) {
+                    return false;
+                }
                 b.lock();
                 try {
                     delay.sleepInsideStep();
                     counter.incrementAndGet();
-                    boolean swapped = false;
                     if (a.getValue().compareTo(b.getValue()) > 0) {
                         Node after = b.getNext();
                         before.setNext(b);
                         b.setNext(a);
                         a.setNext(after);
-                        swapped = true;
+                        return true;
                     }
-                    return swapped;
+                    return false;
                 } finally {
                     b.unlock();
                 }
             } finally {
                 a.unlock();
             }
-        } catch (NullPointerException ignored) {
-            return false;
         } finally {
             before.unlock();
         }
