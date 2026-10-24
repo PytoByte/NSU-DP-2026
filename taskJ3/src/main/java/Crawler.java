@@ -15,7 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Spider {
+public class Crawler {
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
     private static final int MAX_PARALLEL_REQUESTS = 100;
     private static final int MAX_ATTEMPTS = 3;
@@ -26,11 +26,11 @@ public class Spider {
     private final Gson gson = new Gson();
     private final Set<String> visited = ConcurrentHashMap.newKeySet();
     private final List<String> messages = Collections.synchronizedList(new ArrayList<>());
-    private final Semaphore permits = new Semaphore(MAX_PARALLEL_REQUESTS);
+    private final Semaphore requestsLimit = new Semaphore(MAX_PARALLEL_REQUESTS);
     private final AtomicInteger pending = new AtomicInteger();
     private final Object idle = new Object();
 
-    public Spider(HttpClient client, String baseUrl) {
+    public Crawler(HttpClient client, String baseUrl) {
         this.client = client;
         this.baseUri = URI.create(baseUrl);
     }
@@ -79,7 +79,7 @@ public class Spider {
     }
 
     private String fetch(String path) throws IOException, InterruptedException {
-        permits.acquire();
+        requestsLimit.acquire();
         try {
             HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(path))
                     .timeout(REQUEST_TIMEOUT)
@@ -91,7 +91,7 @@ public class Spider {
             }
             return response.body();
         } finally {
-            permits.release();
+            requestsLimit.release();
         }
     }
 

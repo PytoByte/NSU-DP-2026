@@ -5,7 +5,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Main {
-    private static final String HOST = "http://localhost";
+    private static final String DEFAULT_URL = "http://localhost";
     private static final int DEFAULT_PORT = 8080;
     private static final String ROOT = "/";
 
@@ -16,7 +16,7 @@ public class Main {
                      .executor(httpExecutor)
                      .connectTimeout(Duration.ofSeconds(5))
                      .build()) {
-            List<String> messages = new Spider(client, baseUrl).crawl(ROOT);
+            List<String> messages = new Crawler(client, baseUrl).crawl(ROOT);
             messages.stream()
                     .sorted()
                     .forEach(System.out::println);
@@ -24,7 +24,8 @@ public class Main {
     }
 
     private static String buildBaseUrl(String[] args) {
-        int port = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_PORT;
-        return HOST + ":" + port;
+        String url = args.length > 0 ? args[0] : DEFAULT_URL;
+        int port = args.length > 1 ? Integer.parseInt(args[1]) : DEFAULT_PORT;
+        return url + ":" + port;
     }
 }
