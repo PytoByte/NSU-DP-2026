@@ -2,7 +2,6 @@ package org.example.app;
 
 import org.example.common.AppConfig;
 import org.example.common.BubbleSorter;
-import org.example.common.DelayConfig;
 import org.example.common.ListType;
 import org.example.list.ArrayListBubbleSorter;
 import org.example.list.LinkedListBubbleSorter;
@@ -16,8 +15,6 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class BenchmarkRunner {
-
-    public static final long DEFAULT_TIMEOUT_MS = 120_000;
 
     public record Report(
             ListType listType,
@@ -43,39 +40,31 @@ public final class BenchmarkRunner {
 
     public static Report run(AppConfig config) throws InterruptedException {
         int elements = config.benchmarkElements();
-        Long duration = config.benchmarkDurationMillis();
-        boolean untilSorted = duration == null;
-        DelayConfig delay = config.delay();
-
-        long timeout = duration != null ? duration :
-                delay.insideStepMillis() * delay.betweenStepsMillis() * elements;
+        boolean untilSorted = config.benchmarkDurationMillis() == null;
 
         AtomicInteger counter = new AtomicInteger();
         List<BubbleSorter> sorters = new ArrayList<>();
 
         if (config.listType() == ListType.LINKED) {
             LockingLinkedList linked = new LockingLinkedList();
-            fill(linked, elements);
+            fillListWithRandomWords(linked, elements);
             for (int i = 0; i < config.threads(); i++) {
-                sorters.add(new LinkedListBubbleSorter(linked, counter, delay, untilSorted));
+                sorters.add(new LinkedListBubbleSorter(linked, counter, config.delay(), untilSorted));
             }
         } else {
             SynchronizedArrayList array = new SynchronizedArrayList();
-            fill(array, elements);
+            fillListWithRandomWords(array, elements);
             for (int i = 0; i < config.threads(); i++) {
-                sorters.add(new ArrayListBubbleSorter(array, counter, delay, untilSorted));
+                sorters.add(new ArrayListBubbleSorter(array, counter, config.delay(), untilSorted));
             }
         }
 
         long startMillis = System.currentTimeMillis();
         try(SorterRunner sorterRunner = new SorterRunner(sorters)) {
             if (untilSorted) {
-                boolean finished = sorterRunner.joinAll(timeout);
-                if (!finished) {
-                    throw new IllegalStateException("Sort timeout: " + timeout + " ms");
-                }
+                sorterRunner.joinAll();
             } else {
-                Thread.sleep(duration);
+                Thread.sleep(config.benchmarkDurationMillis());
             }
         }
 
@@ -91,22 +80,18 @@ public final class BenchmarkRunner {
         );
     }
 
-    private static void fill(SyncStringList list, int elements) {
+    private static void fillListWithRandomWords(SyncStringList list, int elements) {
         Random random = new Random(42);
         for (int i = 0; i < elements; i++) {
-            list.addFirst(
-                    String.format("%04d-%s",
-                            random.nextInt(10_000),
-                            randomLetters(random, 8)
-                    )
-            );
+            list.addFirst(String.format("%s", generateRandomWord(random)));
         }
     }
 
-    private static String randomLetters(Random random, int length) {
+    private static String generateRandomWord(Random random) {
+        int length = 8;
         StringBuilder sb = new StringBuilder(length);
         for (int i = 0; i < length; i++) {
-            sb.append((char) ('a' + random.nextInt(26)));
+            sb.append((char) random.nextInt('A', 'z' + 1));
         }
         return sb.toString();
     }

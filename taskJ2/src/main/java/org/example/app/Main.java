@@ -72,11 +72,11 @@ public final class Main {
             String key = kv[0].replaceFirst("^--", "");
             String value = kv.length > 1 ? kv[1] : "";
             switch (key) {
-                case "type", "list" -> type = ListType.fromName(value);
+                case "type" -> type = ListType.fromName(value);
                 case "threads" -> threads = Integer.parseInt(value);
                 case "between" -> between = Long.parseLong(value);
                 case "inside" -> inside = Long.parseLong(value);
-                case "max-line", "maxLine" -> maxLine = Integer.parseInt(value);
+                case "maxLine" -> maxLine = Integer.parseInt(value);
                 case "benchmark" -> benchmark = Integer.parseInt(value);
                 case "duration" -> duration = Long.parseLong(value);
                 default -> throw new IllegalArgumentException("Unknown argument: " + arg);

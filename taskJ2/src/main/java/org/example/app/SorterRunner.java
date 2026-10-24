@@ -20,21 +20,10 @@ public final class SorterRunner implements Closeable {
         }
     }
 
-    public boolean joinAll(long timeout) throws InterruptedException {
-        long deadline = System.currentTimeMillis() + timeout;
+    public void joinAll() throws InterruptedException {
         for (Thread thread : threads) {
-            long remaining = deadline - System.currentTimeMillis();
-            if (remaining <= 0) {
-                return false;
-            }
-            thread.join(remaining);
+            thread.join();
         }
-        for (Thread thread : threads) {
-            if (thread.isAlive()) {
-                return false;
-            }
-        }
-        return true;
     }
 
     @Override
