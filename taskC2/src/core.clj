@@ -2,10 +2,8 @@
 
 (defn sieve [xs]
   (lazy-seq
-    (let [p (first xs)]
-      (cons p
-        (sieve (remove #(= 0 (mod % p)) (rest xs)))
-      )
+    (cons (first xs)
+      (sieve (remove #(= 0 (mod % (first xs))) (rest xs)))
     )
   )
 )
