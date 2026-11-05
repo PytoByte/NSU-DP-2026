@@ -1,0 +1,12 @@
+{
+  :paths ["src"]
+  :aliases {
+    :main {
+      :main-opts ["-m" "core"]
+    }
+    :test {
+      :extra-paths ["test"]
+      :main-opts ["-e" "(require 'core-test) (clojure.test/run-tests 'core-test) (shutdown-agents)"]
+    }
+  }
+}
