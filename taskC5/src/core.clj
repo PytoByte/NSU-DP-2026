@@ -90,16 +90,9 @@
     eat (if (>= (count args) 3) (Long/parseLong (nth args 2)) 10),
     meals (if (>= (count args) 4) (Integer/parseInt (nth args 3)) 20)
   ]
-    (println "=== Configurable run ===")
     (print-result "Run" (run-sim n1 think eat meals))
-
-    (println "=== Even philosophers (4) ===")
     (print-result "Even" (run-sim 4 10 10 20))
-
-    (println "=== Odd philosophers (5) ===")
     (print-result "Odd" (run-sim 5 10 10 20))
-
-    (println "=== High contention / try livelock (4, no delays) ===")
-    (print-result "Contention" (run-sim 4 0 0 100))
+    (print-result "Try livelock" (run-sim 4 0 0 20))
   )
 )
