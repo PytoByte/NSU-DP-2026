@@ -1,4 +1,4 @@
-(ns task-c4)
+(ns core)
 
 (declare supply-msg)
 (declare notify-msg)
@@ -95,16 +95,20 @@
    ;;   with 'supply-msg'
    ;; - return new agent state with possibly modified ':buffer' in any case!
   [state ware storage-atom amount]
-  (let [{:keys [duration target-storage bill buffer]} state
+  ;;;;;;;;;;;;;;;;;;;;;;;
+  ;;TODO implement me
+  ;;;;;;;;;;;;;;;;;;;;;;;
+  (let [
+    {:keys [duration target-storage bill buffer]} state,
 
-    ;; Шаг 1: сколько не хватает до bill с учётом буфера
-    need (- (get bill ware 0) (get buffer ware 0))
+    ;; сколько не хватает до bill с учётом буфера
+    need (- (get bill ware 0) (get buffer ware 0)),
 
-    ;; Шаг 2: атомарно забираем min(need, доступно)
+    ;; атомарно забираем min(need, доступно)
     taken
     (if (pos? need)
       (loop []
-        (let [cur @storage-atom take_n (min need cur)]
+        (let [cur @storage-atom, take_n (min need cur)]
           (cond
             (zero? take_n)
             0
@@ -114,22 +118,24 @@
 
             :else
             (recur))))
-    0)
+    0),
 
-    ;; Шаг 3: кладём взятое в буфер
-    buffer' (update buffer ware + taken)]
+    ;; кладём взятое в буфер
+    buffer' (update buffer ware + taken)
+  ]
 
-  ;; Шаг 4: хватает ли всех ресурсов по bill?
+  ;; хватает ли всех ресурсов по bill?
   (if (every? (fn [[w a]] (>= (get buffer' w 0) a)) bill)
 
-    ;; 4a. Да — производим
+    ;; Да — производим
     (do
       (Thread/sleep duration)
       (send (target-storage :worker) supply-msg (:amount state))
       (assoc state :buffer (zipmap (keys bill) (repeat 0))))
 
-    ;; 4b. Нет — просто сохраняем обновлённый буфер
-    (assoc state :buffer buffer')))
+    ;; Нет — просто сохраняем обновлённый буфер
+    (assoc state :buffer buffer'))
+  )
 )
 
 ;;;
@@ -156,6 +162,10 @@
 (defn stop []
   (.stop ore-mine)
   (.stop lumber-mill))
+
+(defn -main [& _]
+  (start)
+  @(promise))
 
 ;;;This could be used to aquire errors from workers
 ;;;(agent-error (gears-factory :worker))
