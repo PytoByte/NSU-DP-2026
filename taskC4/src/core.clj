@@ -117,8 +117,13 @@
             take_n
 
             :else
-            (recur))))
-    0),
+            (recur)
+          )
+        )
+      )
+
+      0
+    ),
 
     ;; кладём взятое в буфер
     buffer' (update buffer ware + taken)
